@@ -22,14 +22,12 @@ class AuthController extends PageController
         $userModel = new User();
         $user = $userModel->findByName($name);
 
-        // Czy użytkownik istnieje i czy hasło jest poprawne?
         if ($user && password_verify($password, $user['password'])) {
-            // Hasło poprawne!
-            $_SESSION['user'] = $user['name'];
+            $_SESSION['user_id'] = $user['id'];
+            $_SESSION['user_name'] = $user['name'];
             header("Location: /main");
             exit;
         } else {
-            // Błędna nazwa lub hasło
             $this->showLoginForm('Nieprawidłowa nazwa użytkownika lub hasło.');
         }
     }

@@ -1,29 +1,37 @@
 <?php
 
 namespace App\Controllers;
+use App\Models\Task; // Dodaj import modelu Task
 
 class PageController 
 {
-    // Wyświetla główną stronę po zalogowaniu
+    // main page
+
     public function main() 
     {
-        if (!isset($_SESSION['user'])) {
+        if (!isset($_SESSION['user_id'])) {
             header("Location: /");
             exit;
         }
 
-        $username = $_SESSION['user'];
+        // POBIOERZ dane użytkownika i jego zadania
+        $username = $_SESSION['user_name'];
+        $userId = $_SESSION['user_id'];
         
-        // Przekaż zmienną $username do widoku
-        $this->renderView('main', ['username' => $username]);
+        $taskModel = new Task();
+        $tasks = $taskModel->findByUserId($userId);
+        
+        // Przekazanie zmiennych
+        $this->renderView('main', [
+            'username' => $username,
+            'tasks' => $tasks
+        ]);
     }
 
-    // Funkcja pomocnicza do renderowania widoku
+    // widok
     protected function renderView(string $viewName, array $data = [])
     {
-        // Udostępnij zmienne z tablicy $data w widoku
         extract($data);
-
         require_once __DIR__ . "/../Views/{$viewName}.php";
     }
 }

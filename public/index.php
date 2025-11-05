@@ -21,9 +21,10 @@ spl_autoload_register(function ($class) {
 
 use App\Controllers\AuthController;
 use App\Controllers\PageController;
+use App\Controllers\TaskController;
 
-// Routing na podstawie adresu URL
-$request_uri = strtok($_SERVER["REQUEST_URI"], '?'); // Usuń query string
+// Routing
+$request_uri = strtok($_SERVER["REQUEST_URI"], '?');
 $method = $_SERVER['REQUEST_METHOD'];
 
 $authController = new AuthController();
@@ -54,8 +55,39 @@ switch ($request_uri) {
         $authController->logout();
         break;
 
+    case '/task/create':
+        if ($method === 'POST') {
+            (new TaskController())->create();
+        } else {
+            header("Location: /main"); // Przekieruj jeśli to nie POST
+        }
+        break;
+
+    case '/task/edit':
+        if ($method === 'GET') {
+            (new TaskController())->showEditForm();
+        } else {
+            header("Location: /main");
+        }
+        break;
+
+    case '/task/update':
+        if ($method === 'POST') {
+            (new TaskController())->update();
+        } else {
+            header("Location: /main");
+        }
+        break;
+
+    case '/task/delete':
+        if ($method === 'POST') {
+            (new TaskController())->delete();
+        } else {
+            header("Location: /main");
+        }
+        break;
+
     default:
-        // Obsługa 404
         http_response_code(404);
         echo "404 - Strona nie znaleziona";
         break;
