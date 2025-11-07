@@ -4,85 +4,109 @@ namespace App\Controllers;
 
 use App\Models\Task;
 
-class TaskController extends PageController
+class TaskController extends ApiController
 {
     private $taskModel;
-    private $userId;
 
     public function __construct()
     {
-        // Upewnij się, że użytkownik jest zalogowany
-        if (!isset($_SESSION['user_id'])) {
-            header("Location: /");
-            exit;
-        }
-        
+        parent::__construct();
+        // Wszystkie akcje w tym kontrolerze wymagają zalogowanego użytkownika
+        $this->checkAuthentication(); 
         $this->taskModel = new Task();
-        $this->userId = $_SESSION['user_id'];
     }
 
-    // Tworzy nowe zadanie.
+    // Pobiera wszystkie zadania dla zalogowanego użytkownika
+    // Metoda: GET, Endpoint: /api/tasks
+    public function listTasks()
+    {
+        $tasks = $this->taskModel->findByUserId($this->userId);
+        $this->sendJsonResponse($tasks, 200);
+    }
+
+    // Pobiera jedno zadanie
+    // Metoda: GET, Endpoint: /api/tasks/{id}
+    public function getTask(int $taskId)
+    {
+        if (!$this->taskModel->isOwner($taskId, $this->userId)) {
+            $this->sendJsonResponse(['error' => 'Task not found or permission denied'], 404);
+            return;
+        }
+        $task = $this->taskModel->findById($taskId);
+        $this->sendJsonResponse($task, 200);
+    }
+
+    // Tworzy nowe zadanie
+    // Metoda: POST, Endpoint: /api/tasks
     public function create()
     {
-        $title = $_POST['title'] ?? '';
-        $description = $_POST['description'] ?? '';
-        $priority = (int) ($_POST['priority'] ?? 1);
-        $dueDate = $_POST['due_date'] ?? '';
-
-        if (!empty($title) && !empty($dueDate)) {
-            $this->taskModel->create($this->userId, $title, $description, $priority, $dueDate);
-        }
+        $data = $this->getJsonInput();
         
-        header("Location: /main");
-        exit;
+        $title = $data['title'] ?? '';
+        $description = $data['description'] ?? '';
+        $priority = (int) ($data['priority'] ?? 1);
+        $dueDate = $data['due_date'] ?? '';
+
+        if (empty($title) || empty($dueDate)) {
+            $this->sendJsonResponse(['error' => 'Title and due_date are required'], 400);
+            return;
+        }
+
+        $success = $this->taskModel->create($this->userId, $title, $description, $priority, $dueDate);
+        
+        if ($success) {
+            // W idealnym API zwrócilibyśmy nowo utworzony obiekt, ale to wymaga pobrania lastInsertId
+            $this->sendJsonResponse(['success' => true, 'message' => 'Task created'], 201);
+        } else {
+            $this->sendJsonResponse(['error' => 'Failed to create task'], 500);
+        }
     }
 
-    // Formularz edycji zadania
-    public function showEditForm()
+    // Aktualizuje zadanie
+    // Metoda: PUT, Endpoint: /api/tasks/{id}
+    public function update(int $taskId)
     {
-        $taskId = (int) ($_GET['id'] ?? 0);
+        $data = $this->getJsonInput();
         
-        // Sprawdź, czy użytkownik jest właścicielem zadania
         if (!$this->taskModel->isOwner($taskId, $this->userId)) {
-            header("Location: /main");
-            exit;
-        }
-
-        $task = $this->taskModel->findById($taskId);
-        $this->renderView('edit_task', ['task' => $task]);
-    }
-
-    // Aktualizuacja zadania
-    public function update()
-    {
-        $taskId = (int) ($_POST['task_id'] ?? 0);
-        $title = $_POST['title'] ?? '';
-        $description = $_POST['description'] ?? '';
-        $priority = (int) ($_POST['priority'] ?? 1);
-        $dueDate = $_POST['due_date'] ?? '';
-
-        // Sprawdź, czy użytkownik jest właścicielem
-        if ($taskId && !empty($title) && !empty($dueDate)) {
-            if ($this->taskModel->isOwner($taskId, $this->userId)) {
-                $this->taskModel->update($taskId, $title, $description, $priority, $dueDate);
-            }
-        }
-
-        header("Location: /main");
-        exit;
-    }
-
-    // Usuwanie zadania
-    public function delete()
-    {
-        $taskId = (int) ($_POST['task_id'] ?? 0);
-
-        // Sprawdź, czy użytkownik jest właścicielem
-        if ($taskId && $this->taskModel->isOwner($taskId, $this->userId)) {
-            $this->taskModel->delete($taskId);
+            $this->sendJsonResponse(['error' => 'Task not found or permission denied'], 404);
+            return;
         }
         
-        header("Location: /main");
-        exit;
+        $title = $data['title'] ?? '';
+        $description = $data['description'] ?? '';
+        $priority = (int) ($data['priority'] ?? 1);
+        $dueDate = $data['due_date'] ?? '';
+
+        if (empty($title) || empty($dueDate)) {
+            $this->sendJsonResponse(['error' => 'Title and due_date are required'], 400);
+            return;
+        }
+
+        $success = $this->taskModel->update($taskId, $title, $description, $priority, $dueDate);
+        
+        if ($success) {
+            $this->sendJsonResponse(['success' => true, 'message' => 'Task updated'], 200);
+        } else {
+            $this->sendJsonResponse(['error' => 'Failed to update task'], 500);
+        }
+    }
+
+    // Usuwa zadanie
+    // Metoda: DELETE, Endpoint: /api/tasks/{id}
+    public function delete(int $taskId)
+    {
+        if (!$this->taskModel->isOwner($taskId, $this->userId)) {
+            $this->sendJsonResponse(['error' => 'Task not found or permission denied'], 404);
+            return;
+        }
+
+        $success = $this->taskModel->delete($taskId);
+
+        if ($success) {
+            $this->sendJsonResponse(null, 204); // 204 No Content
+        } else {
+            $this->sendJsonResponse(['error' => 'Failed to delete task'], 500);
+        }
     }
 }

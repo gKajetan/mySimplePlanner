@@ -1,7 +1,14 @@
 <?php
-session_start();
+// Ustaw domyślny typ odpowiedzi na JSON
+header('Content-Type: application/json');
 
-// Autoloader
+// 1. ZAŁADUJ AUTOLOADER COMPOSERA
+// Musi być na samej górze, aby załadować bibliotekę JWT
+require __DIR__ . '/../vendor/autoload.php';
+
+// 2. SESJA JEST JUŻ NIEPOTRZEBNA (usunięto session_start())
+
+// Autoloader aplikacji (bez zmian)
 spl_autoload_register(function ($class) {
     $prefix = 'App\\';
     $base_dir = __DIR__ . '/../app/';
@@ -20,75 +27,65 @@ spl_autoload_register(function ($class) {
 });
 
 use App\Controllers\AuthController;
-use App\Controllers\PageController;
 use App\Controllers\TaskController;
 
-// Routing
+// Prosty router API
 $request_uri = strtok($_SERVER["REQUEST_URI"], '?');
 $method = $_SERVER['REQUEST_METHOD'];
 
-$authController = new AuthController();
-$pageController = new PageController();
+// Rozbij URI na części
+$parts = explode('/', trim($request_uri, '/'));
+$apiPrefix = $parts[0] ?? null; // 'api'
+$resource = $parts[1] ?? null;  // 'login', 'register', 'tasks'
+$resourceId = $parts[2] ?? null; // np. ID zadania '123'
 
-switch ($request_uri) {
-    case '/':
-        if ($method === 'POST') {
-            $authController->handleLogin();
-        } else {
-            $authController->showLoginForm();
-        }
-        break;
-
-    case '/register':
-        if ($method === 'POST') {
-            $authController->handleRegistration();
-        } else {
-            $authController->showRegistrationForm();
-        }
-        break;
-
-    case '/main':
-        $pageController->main();
-        break;
-
-    case '/logout':
-        $authController->logout();
-        break;
-
-    case '/task/create':
-        if ($method === 'POST') {
-            (new TaskController())->create();
-        } else {
-            header("Location: /main"); // Przekieruj jeśli to nie POST
-        }
-        break;
-
-    case '/task/edit':
-        if ($method === 'GET') {
-            (new TaskController())->showEditForm();
-        } else {
-            header("Location: /main");
-        }
-        break;
-
-    case '/task/update':
-        if ($method === 'POST') {
-            (new TaskController())->update();
-        } else {
-            header("Location: /main");
-        }
-        break;
-
-    case '/task/delete':
-        if ($method === 'POST') {
-            (new TaskController())->delete();
-        } else {
-            header("Location: /main");
-        }
-        break;
-
-    default:
-        http_response_code(404);
-        echo "404 - Strona nie znaleziona";
-        break;
+if ($apiPrefix !== 'api') {
+    http_response_code(404);
+    echo json_encode(['error' => 'API not found. Use /api endpoint']);
+    exit;
 }
+
+// Routing dla Auth
+if ($resource === 'register' && $method === 'POST') {
+    (new AuthController())->handleRegistration();
+    exit;
+}
+
+if ($resource === 'login' && $method === 'POST') {
+    (new AuthController())->handleLogin();
+    exit;
+}
+
+// 3. ENDPOINT /api/logout ZOSTAŁ USUNIĘTY
+// Wylogowanie w JWT polega na usunięciu tokena po stronie klienta.
+
+// Routing dla Tasks (bez zmian)
+if ($resource === 'tasks') {
+    $controller = new TaskController();
+
+    if ($method === 'GET') {
+        if ($resourceId) {
+            $controller->getTask((int)$resourceId); // GET /api/tasks/{id}
+        } else {
+            $controller->listTasks(); // GET /api/tasks
+        }
+    } 
+    elseif ($method === 'POST') {
+        $controller->create(); // POST /api/tasks
+    } 
+    elseif ($method === 'PUT' && $resourceId) {
+        $controller->update((int)$resourceId); // PUT /api/tasks/{id}
+    } 
+    elseif ($method === 'DELETE' && $resourceId) {
+        $controller->delete((int)$resourceId); // DELETE /api/tasks/{id}
+    } 
+    else {
+        http_response_code(405); // Method Not Allowed
+        echo json_encode(['error' => 'Method Not Allowed for this resource']);
+    }
+    exit;
+}
+
+// Domyślny błąd 404
+http_response_code(404);
+echo json_encode(['error' => 'Endpoint not found']);
