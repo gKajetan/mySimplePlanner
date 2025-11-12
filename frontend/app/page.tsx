@@ -1,9 +1,17 @@
 import Link from "next/link";
-import { CheckCircle, LogIn, UserPlus, LayoutDashboard } from "lucide-react";
+import { LayoutDashboard, LogIn, UserPlus } from "lucide-react";
+import { Button } from "@/components/ui/button"; // Correct shadcn/ui import
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 export default function Home() {
   return (
-    <div className="flex min-h-screen w-full flex-col items-center justify-center bg-neutral-100 dark:bg-black p-4 font-sans antialiased">
+    <div className="flex min-h-screen w-full flex-col items-center justify-center bg-neutral-50 dark:bg-neutral-950 p-4 font-sans antialiased">
       <main className="flex w-full max-w-lg flex-col items-center text-center">
         {/* Header */}
         <h1 className="text-5xl font-bold text-black dark:text-white mb-6">
@@ -13,50 +21,60 @@ export default function Home() {
           Your tasks, simplified and connected.
         </p>
 
-        {/* About Section */}
-        <div className="w-full bg-white dark:bg-neutral-900 shadow-xl rounded-2xl p-8 sm:p-10 mb-10">
-          <h2 className="text-2xl font-semibold text-black dark:text-white mb-4">
-            About Us
-          </h2>
-          <p className="text-base text-neutral-700 dark:text-neutral-300 leading-relaxed">
-            <strong>mySimplePlanner</strong> is born from the idea that
-            productivity tools should be powerful yet unobtrusive. We focus on a
-            clean, fast, and simple interface to manage your tasks, so you can
-            focus on what actually matters.
-          </p>
-          <p className="text-base text-neutral-700 dark:text-neutral-300 leading-relaxed mt-4">
-            We're currently building features to integrate directly with your
-            favorite tools, including{" "}
-            <span className="font-medium text-blue-500">Telegram</span>, to
-            bring your tasks directly into your conversations.
-          </p>
-        </div>
+        {/* About Section (Card) */}
+        <Card className="w-full text-left mb-10">
+          <CardHeader>
+            <CardTitle>About Us</CardTitle>
+            <CardDescription>
+              Productivity tools should be powerful, not complicated.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-base text-neutral-700 dark:text-neutral-300 leading-relaxed">
+              <strong>mySimplePlanner</strong> is born from this idea. We focus
+              on a clean, fast, and simple interface to manage your tasks, so
+              you can focus on what actually matters.
+            </p>
+            <p className="text-base text-neutral-700 dark:text-neutral-300 leading-relaxed">
+              We're building features to integrate with tools like{" "}
+              <span className="font-medium text-blue-500">Telegram</span>,
+              bringing your tasks directly into your conversations.
+            </p>
+          </CardContent>
+        </Card>
 
         {/* Call to Action Buttons */}
-        <div className="w-full space-y-4">
-          <Link
-            href="/dashboard"
-            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-semibold text-lg bg-black dark:bg-white text-white dark:text-black transition-opacity duration-200 hover:opacity-80"
-          >
-            <LayoutDashboard size={20} />
-            Go to Dashboard
-          </Link>
+        <div className="w-full space-y-3">
+          <Button asChild size="lg" className="w-full text-base">
+            <Link href="/dashboard">
+              <LayoutDashboard className="mr-2 h-5 w-5" />
+              Go to Dashboard
+            </Link>
+          </Button>
 
-          <div className="flex flex-col sm:flex-row sm:space-x-4 space-y-4 sm:space-y-0">
-            <Link
-              href="/login"
-              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-semibold text-lg bg-white dark:bg-neutral-800 text-black dark:text-white border border-neutral-300 dark:border-neutral-700 transition-colors duration-200 hover:bg-neutral-50 dark:hover:bg-neutral-700"
+          <div className="flex flex-col space-x-3 space-y-3">
+            <Button
+              asChild
+              variant="outline"
+              size="lg"
+              className="w-full text-base"
             >
-              <LogIn size={20} />
-              Sign In
-            </Link>
-            <Link
-              href="/register"
-              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-semibold text-lg bg-white dark:bg-neutral-800 text-black dark:text-white border border-neutral-300 dark:border-neutral-700 transition-colors duration-200 hover:bg-neutral-50 dark:hover:bg-neutral-700"
+              <Link href="/login">
+                <LogIn className="mr-2 h-5 w-5" />
+                Sign In
+              </Link>
+            </Button>
+            <Button
+              asChild
+              variant="outline"
+              size="lg"
+              className="w-full text-base"
             >
-              <UserPlus size={20} />
-              Sign Up
-            </Link>
+              <Link href="/register">
+                <UserPlus className="mr-2 h-5 w-5" />
+                Sign Up
+              </Link>
+            </Button>
           </div>
         </div>
       </main>
