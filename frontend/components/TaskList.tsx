@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { useAppSelector } from "@/store/hooks";
 import { Task } from "@/lib/types";
 import {
@@ -18,19 +19,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { StarRating } from "@/components/ui/star-rating";
+import { TaskFilters, TaskFiltersState } from "@/components/TaskFilters";
 
-// Helper to render stars
-const renderStars = (importance: number) => {
-  return (
-    <div className="flex text-yellow-400">
-      {Array.from({ length: 5 }, (_, i) => (
-        <span key={i}>{i < importance ? "★" : "☆"}</span>
-      ))}
-    </div>
-  );
-};
-
-// This is the individual Task component that triggers a modal
+// --- TaskCard Sub-Component ---
+// (This is the same as before, just moved inside this file)
 function TaskCard({ task }: { task: Task }) {
   return (
     <Dialog>
@@ -43,9 +36,13 @@ function TaskCard({ task }: { task: Task }) {
           <CardFooter>
             <div className="flex justify-between items-center w-full">
               <span className="text-sm text-muted-foreground">
-                View Details
+                Zobacz szczegóły
               </span>
-              {renderStars(task.importance)}
+              <StarRating
+                value={task.importance}
+                readOnly
+                starClassName="size-4"
+              />
             </div>
           </CardFooter>
         </Card>
@@ -54,19 +51,25 @@ function TaskCard({ task }: { task: Task }) {
         <DialogHeader>
           <DialogTitle>{task.title}</DialogTitle>
           <DialogDescription>
-            <strong>Topic:</strong> {task.topic}
+            <strong>Temat:</strong> {task.topic}
           </DialogDescription>
         </DialogHeader>
         <div className="py-4 space-y-4">
           <div>
-            <h4 className="font-medium mb-1">Description</h4>
+            <h4 className="font-medium mb-1">Opis</h4>
             <p className="text-sm text-muted-foreground">
-              {task.description || "No description provided."}
+              {task.description || "Nie podano opisu."}
             </p>
           </div>
           <div>
-            <h4 className="font-medium mb-1">Importance</h4>
-            {renderStars(task.importance)}
+            <h4 className="font-medium mb-1">Ważność</h4>
+            <StarRating value={task.importance} readOnly />
+          </div>
+          <div>
+            <h4 className="font-medium mb-1">Utworzono</h4>
+            <p className="text-sm text-muted-foreground">
+              {new Date(task.createdAt).toLocaleString("pl-PL")}
+            </p>
           </div>
         </div>
       </DialogContent>
@@ -74,28 +77,73 @@ function TaskCard({ task }: { task: Task }) {
   );
 }
 
-// This component lists all tasks
+// --- Main TaskList Component ---
 export function TaskList() {
-  const tasks = useAppSelector((state) => state.tasks.tasks);
+  // 1. Get ALL tasks from Redux
+  const allTasks = useAppSelector((state) => state.tasks.tasks);
 
-  if (tasks.length === 0) {
-    return (
-      <Card className="mt-6">
-        <CardContent className="pt-6">
-          <p className="text-center text-muted-foreground">
-            No tasks found. Click "New Task" to create one!
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
+  // 2. Set up local state for filters
+  const [filters, setFilters] = useState<TaskFiltersState>({
+    topic: "all",
+    rating: "all",
+    sort: "newest",
+  });
 
+  const handleFiltersChange = (newFilters: Partial<TaskFiltersState>) => {
+    setFilters((prev) => ({ ...prev, ...newFilters }));
+  };
+
+  // 3. Filter and sort tasks using useMemo for efficiency
+  const filteredTasks = useMemo(() => {
+    let tasks = [...allTasks];
+
+    // Filter by topic
+    if (filters.topic !== "all") {
+      tasks = tasks.filter((task) => task.topic === filters.topic);
+    }
+
+    // Filter by rating
+    if (filters.rating !== "all") {
+      const ratingNum = parseInt(filters.rating);
+      tasks = tasks.filter((task) => task.importance === ratingNum);
+    }
+
+    // Sort by date
+    tasks.sort((a, b) => {
+      const dateA = new Date(a.createdAt).getTime();
+      const dateB = new Date(b.createdAt).getTime();
+      return filters.sort === "newest" ? dateB - dateA : dateA - dateB;
+    });
+
+    return tasks;
+  }, [allTasks, filters]);
+
+  // 4. Render filters and the filtered list
   return (
     <div className="mt-6 space-y-4">
-      <h2 className="text-2xl font-semibold">Your Tasks</h2>
-      {tasks.map((task) => (
-        <TaskCard key={task.id} task={task} />
-      ))}
+      <h2 className="text-2xl font-semibold">Twoje zadania</h2>
+
+      <TaskFilters
+        tasks={allTasks}
+        filters={filters}
+        onFiltersChange={handleFiltersChange}
+      />
+
+      {filteredTasks.length === 0 ? (
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-center text-muted-foreground">
+              Nie znaleziono zadań pasujących do filtrów.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-4">
+          {filteredTasks.map((task) => (
+            <TaskCard key={task.id} task={task} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

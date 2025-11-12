@@ -29,14 +29,13 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus } from "lucide-react";
 import { Task } from "@/lib/types";
-import { StarRating } from "@/components/ui/star-rating"; // Import the new component
+import { StarRating } from "@/components/ui/star-rating";
 
-// Define the form schema using Zod.
 const taskFormSchema = z.object({
   topic: z.string().min(1, "Topic is required"),
   title: z.string().min(1, "Title is required"),
   description: z.string().optional(),
-  importance: z.number().min(0).max(5), // Importance is a number
+  importance: z.number().min(0).max(5),
 });
 
 type TaskFormInput = z.infer<typeof taskFormSchema>;
@@ -51,17 +50,19 @@ export function NewTaskModal() {
       topic: "",
       title: "",
       description: "",
-      importance: 3, // Default value is a number
+      importance: 3,
     },
   });
 
   function onSubmit(data: TaskFormInput) {
+    const newId = new Date().toISOString(); // Use ISO string for ID and createdAt
     const newTask: Task = {
-      id: new Date().toISOString(),
+      id: newId,
       topic: data.topic,
       title: data.title,
       description: data.description || "",
       importance: data.importance,
+      createdAt: newId, // Add the creation timestamp
     };
 
     dispatch(addTask(newTask));
@@ -128,8 +129,6 @@ export function NewTaskModal() {
                 </FormItem>
               )}
             />
-
-            {/* --- Updated Field --- */}
             <FormField
               control={form.control}
               name="importance"
@@ -143,8 +142,6 @@ export function NewTaskModal() {
                 </FormItem>
               )}
             />
-            {/* --- End of Updated Field --- */}
-
             <DialogFooter>
               <DialogClose asChild>
                 <Button type="button" variant="ghost">
