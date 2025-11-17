@@ -36,8 +36,7 @@ class TaskController extends ApiController
         $this->sendJsonResponse($task, 200);
     }
 
-
-    // Tworzenie nowego zadania
+    // Tworzy nowe zadanie
     // Metoda: POST, Endpoint: /api/tasks
     public function create()
     {
@@ -66,7 +65,6 @@ class TaskController extends ApiController
             $this->sendJsonResponse(['error' => 'Failed to create task'], 500);
         }
     }
-
 
     // Aktualizuje zadanie
     // Metoda: PUT, Endpoint: /api/tasks/{id}
