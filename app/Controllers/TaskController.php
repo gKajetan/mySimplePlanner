@@ -52,11 +52,15 @@ class TaskController extends ApiController
             return;
         }
 
-        $success = $this->taskModel->create($this->userId, $title, $description, $priority, $dueDate);
+        // Metoda create zwróci teraz ID nowego zadania lub false
+        $newTaskId = $this->taskModel->create($this->userId, $title, $description, $priority, $dueDate);
         
-        if ($success) {
-            // W idealnym API zwrócilibyśmy nowo utworzony obiekt, ale to wymaga pobrania lastInsertId
-            $this->sendJsonResponse(['success' => true, 'message' => 'Task created'], 201);
+        if ($newTaskId) {
+            // Pobierz nowo utworzony obiekt zadania na podstawie jego ID
+            $newTask = $this->taskModel->findById($newTaskId);
+            
+            // Zwróć pełny obiekt zadania i status 201 (Created)
+            $this->sendJsonResponse($newTask, 201);
         } else {
             $this->sendJsonResponse(['error' => 'Failed to create task'], 500);
         }

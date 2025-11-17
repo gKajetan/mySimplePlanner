@@ -36,11 +36,18 @@ class Task
 
 
     //Stwórz nowe zadanie.
-    public function create(int $userId, string $title, string $description, int $priority, string $dueDate): bool
+    public function create(int $userId, string $title, string $description, int $priority, string $dueDate): int|false
     {
         $sql = "INSERT INTO tasks (user_id, title, description, priority, due_date) VALUES (?, ?, ?, ?, ?)";
         $stmt = $this->pdo->prepare($sql);
-        return $stmt->execute([$userId, $title, $description, $priority, $dueDate]);
+        $success = $stmt->execute([$userId, $title, $description, $priority, $dueDate]);
+
+        if ($success) {
+            // Zwróć ID ostatnio wstawionego wiersza
+            return (int) $this->pdo->lastInsertId();
+        } else {
+            return false;
+        }
     }
 
     // Zaktualizuj istniejące zadanie.
