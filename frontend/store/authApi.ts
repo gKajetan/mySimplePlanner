@@ -1,4 +1,3 @@
-// file: frontend/store/authApi.ts
 import {
   createApi,
   fetchBaseQuery,
@@ -7,6 +6,7 @@ import {
   FetchBaseQueryError,
 } from "@reduxjs/toolkit/query/react";
 import { setCredentials, logOut } from "./authSlice";
+import { Task } from "@/lib/types";
 import type { RootState } from "./store";
 
 interface LoginResponse {
@@ -25,8 +25,8 @@ interface RefreshResponse {
   token: string;
 }
 
-// Standard base query with Access Token header
-const RbQuery = fetchBaseQuery({
+// Base query with token header
+const baseQuery = fetchBaseQuery({
   baseUrl: "/",
   prepareHeaders: (headers, { getState }) => {
     const token = (getState() as RootState).auth.token;
@@ -37,39 +37,31 @@ const RbQuery = fetchBaseQuery({
   },
 });
 
-// Wrapper to handle Token Expiration (401)
+// Wrapper to handle silent refresh (HttpOnly cookie) on 401
 const baseQueryWithReauth: BaseQueryFn<
   string | FetchArgs,
   unknown,
   FetchBaseQueryError
 > = async (args, api, extraOptions) => {
-  let result = await RbQuery(args, api, extraOptions);
+  let result = await baseQuery(args, api, extraOptions);
 
-  // If the backend says "401 Unauthorized" (Access Token expired)
   if (result.error && result.error.status === 401) {
-    // Avoid infinite loops
     const url = typeof args === "string" ? args : args.url;
     if (url === "/api/refresh") {
       api.dispatch(logOut());
       return result;
     }
 
-    console.log("Access token expired. Attempting to refresh via Cookie...");
-
-    // Call /api/refresh.
-    // IMPORTANT: The browser automatically sends the HttpOnly cookie here.
-    const refreshResult = await RbQuery(
+    const refreshResult = await baseQuery(
       { url: "/api/refresh", method: "POST" },
       api,
       extraOptions
     );
 
     if (refreshResult.data) {
-      // If successful, we get a new Access Token
       const refreshData = refreshResult.data as RefreshResponse;
       const currentUser = (api.getState() as RootState).auth.user;
 
-      // Save new token to Redux + LocalStorage
       api.dispatch(
         setCredentials({
           token: refreshData.token,
@@ -77,21 +69,20 @@ const baseQueryWithReauth: BaseQueryFn<
         })
       );
 
-      // Retry the original failed request
-      result = await RbQuery(args, api, extraOptions);
+      result = await baseQuery(args, api, extraOptions);
     } else {
-      // If refresh fails (cookie expired), log out
       api.dispatch(logOut());
     }
   }
-
   return result;
 };
 
 export const authApi = createApi({
   reducerPath: "authApi",
   baseQuery: baseQueryWithReauth,
+  tagTypes: ["Tasks"], // Used to auto-refresh the list after updates
   endpoints: (builder) => ({
+    // --- Auth ---
     login: builder.mutation<LoginResponse, any>({
       query: (credentials) => ({
         url: "/api/login",
@@ -101,7 +92,6 @@ export const authApi = createApi({
       async onQueryStarted(arg, { dispatch, queryFulfilled }) {
         try {
           const { data } = await queryFulfilled;
-          // Save token to store (which also saves to LocalStorage via slice)
           dispatch(setCredentials({ token: data.token, user: arg.name }));
         } catch (error) {}
       },
@@ -119,12 +109,47 @@ export const authApi = createApi({
         method: "POST",
       }),
       async onQueryStarted(arg, { dispatch, queryFulfilled }) {
-        // Clear local state immediately
         dispatch(logOut());
       },
+    }),
+
+    // --- Tasks ---
+    getTasks: builder.query<Task[], void>({
+      query: () => "/api/tasks",
+      providesTags: ["Tasks"],
+    }),
+    createTask: builder.mutation<Task, Partial<Task>>({
+      query: (task) => ({
+        url: "/api/tasks",
+        method: "POST",
+        body: task,
+      }),
+      invalidatesTags: ["Tasks"],
+    }),
+    updateTask: builder.mutation<void, { id: number; data: Partial<Task> }>({
+      query: ({ id, data }) => ({
+        url: `/api/tasks/${id}`,
+        method: "PUT",
+        body: data,
+      }),
+      invalidatesTags: ["Tasks"],
+    }),
+    deleteTask: builder.mutation<void, number>({
+      query: (id) => ({
+        url: `/api/tasks/${id}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["Tasks"],
     }),
   }),
 });
 
-export const { useLoginMutation, useRegisterMutation, useLogoutMutation } =
-  authApi;
+export const {
+  useLoginMutation,
+  useRegisterMutation,
+  useLogoutMutation,
+  useGetTasksQuery,
+  useCreateTaskMutation,
+  useUpdateTaskMutation,
+  useDeleteTaskMutation,
+} = authApi;
