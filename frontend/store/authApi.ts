@@ -25,9 +25,10 @@ interface RefreshResponse {
   token: string;
 }
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 // Base query with token header
 const baseQuery = fetchBaseQuery({
-  baseUrl: "/",
+  baseUrl: API_BASE_URL,
   prepareHeaders: (headers, { getState }) => {
     const token = (getState() as RootState).auth.token;
     if (token) {
