@@ -2,18 +2,13 @@
 
 namespace App\Controllers;
 
-use App\Services\AuthService;
 use Exception;
 
 class AuthController extends ApiController
 {
-    private $authService;
-
     public function __construct()
     {
         parent::__construct();
-        // Kontroler tworzy instancję serwisu
-        $this->authService = new AuthService();
     }
 
     /**
@@ -31,12 +26,11 @@ class AuthController extends ApiController
             $tokens = $this->authService->login($name, $password);
 
             // 3. Obsłuż odpowiedź HTTP
-            // ZMIANA: refreshToken wysyłamy w JSON, usunięto setRefreshTokenCookie
             $this->sendJsonResponse([
                 'success' => true,
                 'message' => 'Login successful',
                 'token' => $tokens['accessToken'],
-                'refreshToken' => $tokens['refreshToken'] // Dodane pole w odpowiedzi
+                'refreshToken' => $tokens['refreshToken']
             ], 200);
 
         } catch (Exception $e) {
@@ -55,7 +49,6 @@ class AuthController extends ApiController
     {
         try {
             // 1. Pobierz dane HTTP
-            // ZMIANA: refreshToken w body (JSON), a nie w ciasteczku
             $data = $this->getJsonInput();
             $refreshToken = $data['refreshToken'] ?? '';
             
@@ -84,7 +77,6 @@ class AuthController extends ApiController
     {
         try {
             // 1. Pobierz dane HTTP
-            // ZMIANA: Oczekujemy refreshToken w body (JSON)
             $data = $this->getJsonInput();
             $refreshToken = $data['refreshToken'] ?? '';
             
@@ -92,7 +84,6 @@ class AuthController extends ApiController
             $this->authService->logout($refreshToken);
 
             // 3. Obsłuż odpowiedź HTTP
-            // Usunięto clearRefreshTokenCookie
             $this->sendJsonResponse(['success' => true, 'message' => 'Logged out'], 200);
 
         } catch (Exception $e) {
