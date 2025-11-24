@@ -2,9 +2,8 @@
 
 namespace App\Controllers;
 
-// -stare importy
-use App\Services\AuthService; // new
-use Exception; // Nowy import
+use App\Services\AuthService;
+use Exception;
 
 class AuthController extends ApiController
 {
@@ -16,42 +15,6 @@ class AuthController extends ApiController
         // Kontroler tworzy instancję serwisu
         $this->authService = new AuthService();
     }
-
-    /* 
-    * Metody createAccessToken i createRefreshToken przeniesione do AuthService.
-     */
-
-    /*
-     *
-     * Ustawia refresh token jako bezpieczne ciasteczko HttpOnly.
-     * Logika HTTP, zostaje w kontrolerze.
-     */
-    private function setRefreshTokenCookie(string $token)
-    {
-        setcookie('refreshToken', $token, [
-            'expires' => time() + 604800, // 7 dni
-            'path' => '/api/', // Dostępne tylko dla ścieżek API
-            'httponly' => true, // Tylko HTTP (niewidoczne dla JavaScript)
-            'secure' => false, // TODO: W produkcji ustaw na TRUE (wymaga HTTPS)
-            'samesite' => 'Strict' // Ochrona CSRF
-        ]);
-    }
-
-    /**
-     * Czyści ciasteczko refresh tokena.
-     * zostaje w kontrolerze
-     */
-    private function clearRefreshTokenCookie()
-    {
-        setcookie('refreshToken', '', [
-            'expires' => time() - 3600, // Ustaw przeszłą datę
-            'path' => '/api/',
-            'httponly' => true,
-            'secure' => false, // TODO: W produkcji TRUE
-            'samesite' => 'Strict'
-        ]);
-    }
-
 
     /**
      * Obsługuje żądanie logowania.
@@ -68,18 +31,19 @@ class AuthController extends ApiController
             $tokens = $this->authService->login($name, $password);
 
             // 3. Obsłuż odpowiedź HTTP
-            $this->setRefreshTokenCookie($tokens['refreshToken']);
+            // ZMIANA: refreshToken wysyłamy w JSON, usunięto setRefreshTokenCookie
             $this->sendJsonResponse([
                 'success' => true,
                 'message' => 'Login successful',
-                'token' => $tokens['accessToken']
+                'token' => $tokens['accessToken'],
+                'refreshToken' => $tokens['refreshToken'] // Dodane pole w odpowiedzi
             ], 200);
 
         } catch (Exception $e) {
             // 4. Obsłuż błędy z serwisu
             $this->sendJsonResponse(
                 ['success' => false, 'message' => $e->getMessage()], 
-                $e->getCode() ?: 401 // Użyj kodu błędu z wyjątku (domyślnie 401)
+                $e->getCode() ?: 401
             );
         }
     }
@@ -91,7 +55,9 @@ class AuthController extends ApiController
     {
         try {
             // 1. Pobierz dane HTTP
-            $refreshToken = $_COOKIE['refreshToken'] ?? '';
+            // ZMIANA: refreshToken w body (JSON), a nie w ciasteczku
+            $data = $this->getJsonInput();
+            $refreshToken = $data['refreshToken'] ?? '';
             
             // 2. Wywołaj logikę biznesową (Serwis)
             $newAccessToken = $this->authService->refresh($refreshToken);
@@ -118,17 +84,19 @@ class AuthController extends ApiController
     {
         try {
             // 1. Pobierz dane HTTP
-            $refreshToken = $_COOKIE['refreshToken'] ?? '';
+            // ZMIANA: Oczekujemy refreshToken w body (JSON)
+            $data = $this->getJsonInput();
+            $refreshToken = $data['refreshToken'] ?? '';
             
             // 2. Wywołaj logikę biznesową (Serwis)
             $this->authService->logout($refreshToken);
 
             // 3. Obsłuż odpowiedź HTTP
-            $this->clearRefreshTokenCookie();
+            // Usunięto clearRefreshTokenCookie
             $this->sendJsonResponse(['success' => true, 'message' => 'Logged out'], 200);
 
         } catch (Exception $e) {
-            // 4. Obsłuż błędy (chociaż logout nie powinien rzucać błędów)
+            // 4. Obsłuż błędy
             $this->sendJsonResponse(
                 ['success' => false, 'message' => $e->getMessage()], 
                 $e->getCode() ?: 500
@@ -157,7 +125,7 @@ class AuthController extends ApiController
             // 4. Obsłuż błędy
             $this->sendJsonResponse(
                 ['success' => false, 'message' => $e->getMessage()], 
-                $e->getCode() ?: 400 // Domyślnie 400 dla złych danych
+                $e->getCode() ?: 400
             );
         }
     }
