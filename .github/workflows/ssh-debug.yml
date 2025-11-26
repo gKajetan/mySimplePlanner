@@ -13,26 +13,16 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
           script_stop: true
+          # ---------------------------------------------------
+          # 👇 THESE TWO LINES ARE THE FIX 👇
+          debug: true # Shows us the raw SSH handshake logs
+          request_pty: true # Forces the server to send output back
+          # ---------------------------------------------------
           command_timeout: 2m
           script: |
-            # 1. Print connection details immediately to the GitHub Console
             echo "----------------------------------------"
-            echo "✅ CONNECTED!"
+            echo "✅ TERMINAL ALLOCATED!"
             echo "User: $(whoami)"
             echo "Directory: $(pwd)"
             echo "Hostname: $(hostname)"
             echo "----------------------------------------"
-
-            # 2. Test Write Permissions in CURRENT directory
-            echo "Attempting to write file to $(pwd)..."
-            touch debug_proof.txt
-            echo "Hello from GitHub at $(date)" > debug_proof.txt
-
-            # 3. Verify file exists
-            if [ -f "debug_proof.txt" ]; then
-              echo "✅ File created successfully:"
-              ls -l debug_proof.txt
-            else
-              echo "❌ File creation failed"
-              exit 1
-            fi
