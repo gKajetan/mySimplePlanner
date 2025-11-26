@@ -1,0 +1,34 @@
+name: Debug SSH Connection
+on:
+  workflow_dispatch: # Allows manual triggering from the "Actions" tab
+
+jobs:
+  test_ssh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Test Connection
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          debug: true
+          script: |
+            echo "============================="
+            echo "✅ SSH CONNECTION ESTABLISHED"
+            echo "============================="
+            echo "Host: $(hostname)"
+            echo "User: $(whoami)"
+            echo "Uptime: $(uptime)"
+            echo "Disk Space:"
+            df -h / | grep /
+            echo "============================="
+
+            # Create a log file on the server to verify execution
+            LOG_FILE="/home/${{ secrets.SSH_USERNAME }}/ssh_debug_$(date +%Y%m%d_%H%M%S).log"
+            echo "Creating log file at: $LOG_FILE"
+            echo "Connection test run at $(date)" > "$LOG_FILE"
+            echo "Host: $(hostname)" >> "$LOG_FILE"
+            echo "User: $(whoami)" >> "$LOG_FILE"
+            echo "Uptime: $(uptime)" >> "$LOG_FILE"
+            echo "Log file created successfully."
