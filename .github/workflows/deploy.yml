@@ -15,23 +15,30 @@ jobs:
           debug: true
           script_stop: true
           script: |
-            # 1. DIAGNOSTICS: Print server info to GitHub Logs
-            echo "----------------------------------------"
-            echo "Connected to server!"
-            echo "User: $(whoami)"
-            echo "Hostname: $(hostname)"
-            echo "Directory: $(pwd)"
-            echo "----------------------------------------"
+            # 1. STOP ON ERROR: This ensures the job fails if any command fails
+            set -e
 
-            # 2. Navigate to project folder
+            # 2. DIAGNOSTICS: Check where we are and what folders exist
+            echo "--- START DIAGNOSTICS ---"
+            echo "User: $(whoami)"
+            echo "Current Dir: $(pwd)"
+            
+            echo "Listing /home/ubuntu/production contents:"
+            # List files to verify the folder name is correct
+            ls -la /home/ubuntu/production || echo "Directory /home/ubuntu/production does not exist"
+
+            echo "--- DEPLOYMENT STARTING ---"
+
+            # 3. Navigate (Will fail loudly now if folder is missing)
             cd /home/ubuntu/production/mySimplePlanner
             
-            # 3. Docker operations
+            # 4. Docker operations
             sudo docker compose down
-            #sudo docker compose down -v
-
-            # 4. Git pull
+            
+            # 5. Git pull
             git pull origin main --force
 
-            # 5. Rebuild
+            # 6. Rebuild
             sudo docker compose up --build -d
+            
+            echo "--- DEPLOYMENT SUCCESSFUL ---"
