@@ -1,0 +1,23 @@
+on:
+  push:
+    branches:
+      - main
+jobs:
+  deploy_to_production:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+
+            cd /home/ubuntu/production/mySimplePlanner
+            sudo docker compose down
+            #sudo docker compose down -v
+
+            git pull origin main --force
+
+            sudo docker compose up --build -d
