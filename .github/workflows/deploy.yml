@@ -1,53 +1,39 @@
+name: Deploy to Production
+
 on:
   push:
     branches:
       - main
+
 jobs:
   deploy_to_production:
     runs-on: ubuntu-latest
     steps:
       - name: Deploy via SSH
-        uses: appleboy/ssh-action@master
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          debug: true
-          # 'script_stop' was invalid. We use 'set -e' in the script instead.
-          # We force command_timeout to ensure long builds don't hang.
+          port: 22
+          # ---------------------------------------------------
+          # CRITICAL FIXES
+          script_stop: true # Fail immediately if any command errors
+          request_pty: true # Force a pseudo-terminal (fixes your specific VPS issue)
+          # ---------------------------------------------------
           command_timeout: 15m
+          envs: GITHUB_TOKEN
           script: |
-            # 1. STOP ON ERROR
-            # This is crucial. If any command fails (returns non-zero), the whole job fails.
-            set -e
+          
+            cd /home/${{ secrets.SSH_USERNAME }}/production/mySimplePlanner
 
-            # 2. DEFINE VARIABLES
-            # Using the HTTPS URL for public repos avoids SSH key complexity
-            REPO_URL="https://github.com/gsaintskad/mysimpleplanner.git"
-            TARGET_DIR="/home/ubuntu/production/mySimplePlanner"
-
-            echo "--- DIAGNOSTICS START ---"
-            echo "Connected as: $(whoami)"
-            echo "Hostname: $(hostname)"
-            
-            # Check directory existence
-            if [ -d "$TARGET_DIR" ]; then
-              echo "✅ Target directory exists: $TARGET_DIR"
-              cd "$TARGET_DIR"
-            else
-              echo "⚠️ Target directory missing. Creating parent and cloning..."
-              mkdir -p /home/ubuntu/production
-              cd /home/ubuntu/production
-              git clone "$REPO_URL"
-              cd "$TARGET_DIR"
-            fi
-            
             echo "--- DOCKER OPERATIONS ---"
-            # We allow this to fail (|| true) just in case containers aren't running yet
-            sudo docker compose down || true
+            sudo docker compose down 
 
             echo "--- GIT PULL ---"
-            # Ensure we are on the clean main branch
+            # Reset ensures we don't have local conflict changes blocking the pull
             git reset --hard
             git pull origin main --force
 
